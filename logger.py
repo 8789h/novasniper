@@ -1,5 +1,5 @@
 import os
-import base64
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 import gspread
@@ -8,22 +8,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 # === Load .env (optional for local dev) ===
 load_dotenv()
 
-# === Decode base64 creds from Railway env ===
-b64_creds = os.getenv("GOOGLE_SHEETS_JSON")
-if b64_creds:
-    creds_path = "/tmp/credentials.json"
-    with open(creds_path, "wb") as f:
-        f.write(base64.b64decode(b64_creds))
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-else:
+# === Load Google Sheets credentials from raw JSON ===
+raw_json = os.getenv("GOOGLE_SHEETS_JSON")
+if not raw_json:
     raise ValueError("Missing GOOGLE_SHEETS_JSON env variable")
 
-# === Setup Google Sheets client ===
 SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SHEET_ID = os.getenv("SHEET_ID")
-
-creds = ServiceAccountCredentials.from_json_keyfile_name(os.environ["GOOGLE_APPLICATION_CREDENTIALS"], SCOPES)
+info = json.loads(raw_json)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(info, SCOPES)
 client = gspread.authorize(creds)
+
+# === Setup target sheet ===
+SHEET_ID = os.getenv("SHEET_ID")
 sheet = client.open_by_key(SHEET_ID).sheet1
 
 # === Log trade function ===

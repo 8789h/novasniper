@@ -1,7 +1,7 @@
 import os
+import json
 import datetime
-import base64
-import base58  # ✅ Required for decoding Solana private key
+import base58
 import gspread
 from dotenv import load_dotenv
 from solana.rpc.api import Client
@@ -9,16 +9,16 @@ from solana.transaction import Transaction
 from solana.system_program import TransferParams, transfer
 from solana.publickey import PublicKey
 from solana.keypair import Keypair
+from google.oauth2.service_account import Credentials
 
-# === Decode GOOGLE_SHEETS_JSON and set credentials path ===
-b64_creds = os.getenv("GOOGLE_SHEETS_JSON")
-if b64_creds:
-    creds_path = "/tmp/credentials.json"
-    with open(creds_path, "wb") as f:
-        f.write(base64.b64decode(b64_creds))
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-else:
+# === Load Google Sheets credentials from raw JSON env var ===
+raw_json = os.getenv("GOOGLE_SHEETS_JSON")
+if not raw_json:
     raise ValueError("Missing GOOGLE_SHEETS_JSON env variable")
+
+info = json.loads(raw_json)
+creds = Credentials.from_service_account_info(info)
+gc = gspread.authorize(creds)
 
 # === Load env vars ===
 load_dotenv()
@@ -33,7 +33,6 @@ keypair = Keypair.from_secret_key(base58.b58decode(PRIVATE_KEY))
 phantom_pubkey = PublicKey(PHANTOM_PUBLIC_KEY)
 
 # === Google Sheets setup ===
-gc = gspread.service_account(filename="/tmp/credentials.json")
 sheet = gc.open_by_key(SHEET_ID).sheet1
 
 # === SELL FUNCTION using market cap logic ===
