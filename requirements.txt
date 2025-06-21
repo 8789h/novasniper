@@ -55,7 +55,7 @@ rpds-py==0.25.1
 rsa==4.9.1
 six==1.17.0
 sniffio==1.3.1
-solana==0.30.1
+solana==0.23.0
 solders==0.17.0
 Telethon==1.40.0
 types-cachetools==4.2.10
@@ -67,4 +67,3 @@ yarl==1.20.1
 uvicorn
 fastapi
 
-solana==0.23.0
