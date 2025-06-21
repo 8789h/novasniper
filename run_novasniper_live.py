@@ -27,7 +27,7 @@ from get_market_cap import get_market_cap
 
 # === STATE ===
 active_trades = {}
-entry_amount_sol = 0.001
+entry_amount_sol = float(os.getenv("BUY_AMOUNT_SOL", "0.001"))
 
 # === CALLBACK ===
 def on_new_token(token_address, token_label):
@@ -75,7 +75,7 @@ def monitor_trade_loop(token_address):
 
             entry_cap = trade["entry_cap"]
             ratio = current_cap / entry_cap
-            print(f"📊 {trade['symbol']} — Cap: {current_cap:.2f} | Entry: {entry_cap:.2f} | x{ratio:.2f}")
+            print(f"📊 {trade['symbol']} — Cap: {current_cap:.2f} | Entry: {entry_cap:.2f} | Ratio: {ratio:.2f}")
 
             for x, percent, key in [(2, 0.5, "2x"), (3, 0.3, "3x"), (5, 0.2, "5x")]:
                 if not trade["targets_hit"][key] and ratio >= x:
@@ -112,10 +112,6 @@ def monitor_trade_loop(token_address):
 async def main():
     await start_telegram_listener(on_new_token)
 
-    # ✅ Keep Railway container alive
-    while True:
-        await asyncio.sleep(3600)
-
 # === Start FastAPI server + bot ===
 import uvicorn
 
@@ -127,10 +123,10 @@ if __name__ == "__main__":
         print("🚀 NovaSniper V3 Multi-Trade Live")
         print("📡 Listening to Telegram and tracking profit targets...")
 
-        # Launch web server in background
+        # ✅ Launch web server in background
         threading.Thread(target=run_web, daemon=True).start()
 
-        # Run bot
+        # ✅ Run bot
         asyncio.run(main())
 
     except Exception as e:
