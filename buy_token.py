@@ -1,7 +1,7 @@
 import os
 import requests
 import base58
-from solana.keypair import Keypair
+from solders.keypair import Keypair
 from solana.rpc.api import Client
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
