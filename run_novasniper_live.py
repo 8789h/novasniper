@@ -1,4 +1,4 @@
-print("✅ NovaSniper booting up...")
+print("🔥 Top-level code reached")
 
 import os
 import base64
