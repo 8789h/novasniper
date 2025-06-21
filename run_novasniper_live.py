@@ -1,28 +1,16 @@
-print("🔥 Top-level code reached")
-
 import os
-import base64
 import time
 import asyncio
 import threading
+import functools
 
-# ✅ Load Railway Google Sheets JSON and set up env
-b64_creds = os.getenv("GOOGLE_SHEETS_JSON")
-if b64_creds:
-    creds_path = "/tmp/credentials.json"
-    with open(creds_path, "wb") as f:
-        f.write(base64.b64decode(b64_creds))
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-else:
-    raise ValueError("Missing GOOGLE_SHEETS_JSON env variable")
+# === Force all print statements to flush immediately (for Railway logging) ===
+print = functools.partial(print, flush=True)
 
-# ✅ Safe to import now
+# === Imports ===
 from telegram_listener import start_telegram_listener
 from buy_token import buy_token
 from sell_ladder import sell_fn
-from price_feed import get_token_price
-from pumpfun_price import fetch_price
-from logger import log_trade
 from get_market_cap import get_market_cap
 
 # === STATE ===
@@ -49,13 +37,6 @@ def on_new_token(token_address, token_label):
                     "2x": False, "3x": False, "5x": False
                 }
             }
-            log_trade(
-                action="BUY",
-                token=token_label,
-                entry_price=entry_marketcap,
-                tx_id="",
-                token_address=token_address
-            )
             threading.Thread(target=monitor_trade_loop, args=(token_address,), daemon=True).start()
         else:
             print(f"❌ Couldn't fetch market cap for {token_label}")
@@ -75,7 +56,7 @@ def monitor_trade_loop(token_address):
 
             entry_cap = trade["entry_cap"]
             ratio = current_cap / entry_cap
-            print(f"📊 {trade['symbol']} — Cap: {current_cap:.2f} | Entry: {entry_cap:.2f} | Ratio: {ratio:.2f}")
+            print(f"📊 {trade['symbol']} — Cap: {current_cap:.2f} | Entry: {entry_cap:.2f} | x{ratio:.2f}")
 
             for x, percent, key in [(2, 0.5, "2x"), (3, 0.3, "3x"), (5, 0.2, "5x")]:
                 if not trade["targets_hit"][key] and ratio >= x:
@@ -83,32 +64,22 @@ def monitor_trade_loop(token_address):
                         token_symbol=trade["symbol"],
                         token_address=token_address,
                         entry_marketcap=entry_cap,
-                        wallet_total_sol="$540.00",
+                        wallet_total_sol="$540.00",  # placeholder
                         initial_sol_amount=trade["sol_amount"] * percent
                     )
                     if tx_id:
                         print(f"💸 {trade['symbol']}: Sold {int(percent * 100)}% at {key}")
                         trade["targets_hit"][key] = True
-                        log_trade(
-                            action="SELL",
-                            token=trade["symbol"],
-                            entry_price=entry_cap,
-                            current_price=current_cap,
-                            pnl_pct=(ratio - 1) * 100,
-                            target=key.upper(),
-                            tx_id=tx_id,
-                            token_address=token_address
-                        )
 
             if all(trade["targets_hit"].values()):
                 print(f"✅ {trade['symbol']} completed all targets. Closing trade.")
                 del active_trades[token_address]
-
+        
         except Exception as e:
             print(f"❌ Error in monitor loop for {trade['symbol']}: {e}")
         time.sleep(10)
 
-# === MAIN ===
+# === MAIN TELEGRAM LISTENER ===
 async def main():
     await start_telegram_listener(on_new_token)
 
@@ -120,13 +91,11 @@ def run_web():
 
 if __name__ == "__main__":
     try:
+        print("✅ NovaSniper booting up...")
         print("🚀 NovaSniper V3 Multi-Trade Live")
         print("📡 Listening to Telegram and tracking profit targets...")
 
-        # ✅ Launch web server in background
         threading.Thread(target=run_web, daemon=True).start()
-
-        # ✅ Run bot
         asyncio.run(main())
 
     except Exception as e:
