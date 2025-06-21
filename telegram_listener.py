@@ -11,7 +11,7 @@ if not api_id_str:
     raise ValueError("TELEGRAM_API_ID is missing from environment variables")
 api_id = int(api_id_str)
 api_hash = os.getenv("TELEGRAM_API_HASH")
-session_name = os.getenv("SESSION_NAME")
+session_name = "session.session"  # <-- Force local session file
 channel_id = int(os.getenv("TELEGRAM_CHANNEL_ID"))
 
 # === Regex: full pump.fun links or raw tokens ending in 'pump'
@@ -42,4 +42,5 @@ async def start_telegram_listener(callback):
     await client.start()
     print("🤖 Telegram client started.")
     await client.run_until_disconnected()
+
 
