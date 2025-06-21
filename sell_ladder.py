@@ -2,13 +2,13 @@ import os
 import datetime
 import base58
 from dotenv import load_dotenv
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+from solders.transaction import Transaction
+from solders.instruction import Instruction
 from solana.rpc.api import Client
-from solana.transaction import Transaction
-from solana.system_program import TransferParams, transfer
-from solana.publickey import PublicKey
-from solana.keypair import Keypair
-from logger import log_trade  # ✅ Local CSV logger
-from get_market_cap import get_market_cap  # ✅ Assumes you already have this
+from logger import log_trade  # ✅ CSV logger
+from get_market_cap import get_market_cap  # ✅ Market cap fetcher
 
 # === Load env vars ===
 load_dotenv()
@@ -18,8 +18,11 @@ PHANTOM_PUBLIC_KEY = os.getenv("PHANTOM_PUBLIC_KEY")
 
 # === Setup Solana client and wallet ===
 client = Client(RPC_URL)
-keypair = Keypair.from_secret_key(base58.b58decode(PRIVATE_KEY))
-phantom_pubkey = PublicKey(PHANTOM_PUBLIC_KEY)
+keypair = Keypair.from_base58_string(PRIVATE_KEY)
+phantom_pubkey = Pubkey.from_string(PHANTOM_PUBLIC_KEY)
+
+# === Constants ===
+SYS_PROGRAM_ID = Pubkey.from_string("11111111111111111111111111111111")
 
 # === SELL FUNCTION using market cap logic ===
 def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, initial_sol_amount):
@@ -43,18 +46,19 @@ def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, init
             sell_amount = initial_sol_amount * percent
             lamports = int(sell_amount * 1_000_000_000)
 
-            txn = Transaction().add(
-                transfer(
-                    TransferParams(
-                        from_pubkey=keypair.public_key,
-                        to_pubkey=phantom_pubkey,
-                        lamports=lamports
-                    )
-                )
+            # Build transfer instruction
+            ix = Instruction(
+                program_id=SYS_PROGRAM_ID,
+                accounts=[
+                    {"pubkey": keypair.pubkey(), "is_signer": True, "is_writable": True},
+                    {"pubkey": phantom_pubkey, "is_signer": False, "is_writable": True}
+                ],
+                data=lamports.to_bytes(8, "little") + b"\x02"  # transfer instruction layout
             )
 
+            txn = Transaction([ix])
             try:
-                response = client.send_transaction(txn, keypair)
+                response = client.send_raw_transaction(txn.sign([keypair]).serialize(), opts={"skip_preflight": True})
                 txid = response["result"]
                 now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
