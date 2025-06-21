@@ -58,7 +58,6 @@ def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, init
                 txid = response["result"]
                 now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # ✅ Log to CSV
                 log_trade(
                     action="SELL",
                     token=token_symbol,
@@ -79,6 +78,6 @@ def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, init
 
     except Exception as e:
         print(f"❌ Sell logic error: {e}")
-
+        
     return None
 
