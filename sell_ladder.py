@@ -1,44 +1,28 @@
 import os
-import json
 import datetime
 import base58
-import gspread
 from dotenv import load_dotenv
 from solana.rpc.api import Client
 from solana.transaction import Transaction
 from solana.system_program import TransferParams, transfer
 from solana.publickey import PublicKey
 from solana.keypair import Keypair
-from google.oauth2.service_account import Credentials
-
-# === Load Google Sheets credentials from raw JSON env var ===
-raw_json = os.getenv("GOOGLE_SHEETS_JSON")
-if not raw_json:
-    raise ValueError("Missing GOOGLE_SHEETS_JSON env variable")
-
-info = json.loads(raw_json)
-creds = Credentials.from_service_account_info(info)
-gc = gspread.authorize(creds)
+from logger import log_trade  # ✅ Local CSV logger
+from get_market_cap import get_market_cap  # ✅ Assumes you already have this
 
 # === Load env vars ===
 load_dotenv()
 RPC_URL = os.getenv("RPC_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 PHANTOM_PUBLIC_KEY = os.getenv("PHANTOM_PUBLIC_KEY")
-SHEET_ID = os.getenv("SHEET_ID")
 
 # === Setup Solana client and wallet ===
 client = Client(RPC_URL)
 keypair = Keypair.from_secret_key(base58.b58decode(PRIVATE_KEY))
 phantom_pubkey = PublicKey(PHANTOM_PUBLIC_KEY)
 
-# === Google Sheets setup ===
-sheet = gc.open_by_key(SHEET_ID).sheet1
-
 # === SELL FUNCTION using market cap logic ===
 def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, initial_sol_amount):
-    from get_market_cap import get_market_cap
-
     try:
         current_marketcap = get_market_cap(token_address)
         if not current_marketcap or not entry_marketcap:
@@ -74,12 +58,17 @@ def sell_fn(token_symbol, token_address, entry_marketcap, wallet_total_sol, init
                 txid = response["result"]
                 now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # ✅ Log to Google Sheets
-                sheet.append_row([
-                    now, "SELL", token_symbol,
-                    entry_marketcap, current_marketcap,
-                    f"{ratio:.2f}x", label, txid, token_address
-                ], value_input_option="USER_ENTERED")
+                # ✅ Log to CSV
+                log_trade(
+                    action="SELL",
+                    token=token_symbol,
+                    entry_price=entry_marketcap,
+                    current_price=current_marketcap,
+                    pnl_pct=(ratio - 1) * 100,
+                    target=label,
+                    tx_id=txid,
+                    token_address=token_address
+                )
 
                 print(f"✅ Auto-sold {sell_amount:.4f} SOL @ {label} | TxID: {txid}")
                 return txid
