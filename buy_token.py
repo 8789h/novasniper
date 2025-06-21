@@ -18,7 +18,7 @@ PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 BUY_AMOUNT_SOL = float(os.getenv("BUY_AMOUNT_SOL", 0.001))
 
 # === Wallet setup ===
-keypair = Keypair.from_secret_key(base58.b58decode(PRIVATE_KEY))
+keypair = Keypair.from_base58_string(PRIVATE_KEY)
 client = Client(RPC_URL)
 async_client = AsyncClient(RPC_URL, commitment=Confirmed)
 
