@@ -1,56 +1,66 @@
 import os
 import base58
-import requests
 from solana.rpc.api import Client
+from solana.rpc.commitment import Confirmed
+from solana.transaction import Transaction
 from solana.keypair import Keypair
-from solana.rpc.types import TxOpts
+from solana.publickey import PublicKey
+from solana.system_program import TransferParams, transfer
+from spl.token.instructions import get_associated_token_address, create_associated_token_account
+from spl.token.constants import TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
 from dotenv import load_dotenv
 
-# === Load .env ===
+# === Load env ===
 load_dotenv()
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-RPC_URL = os.getenv("RPC_URL")
 BUY_AMOUNT_SOL = float(os.getenv("BUY_AMOUNT_SOL", 0.001))
-JUPITER_API = os.getenv("JUPITER_API", "https://quote-api.jup.ag")
+RPC_URL = os.getenv("RPC_URL")
 
-# === Setup Solana ===
-client = Client(RPC_URL)
+# === Set up wallet and client ===
 keypair = Keypair.from_secret_key(base58.b58decode(PRIVATE_KEY))
-public_key = str(keypair.public_key)
+wallet = keypair.public_key
+client = Client(RPC_URL, commitment=Confirmed)
+
+# === Pump.fun bonding curve derivation ===
+def get_bonding_curve_address(token_address: str) -> PublicKey:
+    token_pubkey = PublicKey(token_address)
+    seeds = [b"bonding_curve", bytes(token_pubkey)]
+    curve_pubkey, _ = PublicKey.find_program_address(seeds, PublicKey("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkgkPjKSb8G49"))
+    return curve_pubkey
 
 # === Buy function ===
-def buy_token(token_address):
+def buy_token(token_address: str) -> bool:
     try:
         print(f"🛒 Buying token: {token_address}")
 
-        # 1. Get best route from SOL → Token
-        quote_url = f"{JUPITER_API}/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint={token_address}&amount={int(BUY_AMOUNT_SOL * 1_000_000_000)}&slippageBps=500"
-        quote = requests.get(quote_url).json()
+        token_pubkey = PublicKey(token_address)
+        bonding_curve = get_bonding_curve_address(token_address)
+        ata = get_associated_token_address(wallet, token_pubkey)
 
-        if not quote["routes"]:
-            raise Exception("No swap route found.")
+        txn = Transaction()
 
-        route = quote["routes"][0]
+        # Create ATA if missing
+        resp = client.get_account_info(ata)
+        if not resp["result"]["value"]:
+            txn.add(create_associated_token_account(
+                payer=wallet,
+                owner=wallet,
+                mint=token_pubkey
+            ))
 
-        # 2. Get swap transaction
-        swap_url = f"{JUPITER_API}/v6/swap"
-        swap_data = {
-            "userPublicKey": public_key,
-            "wrapUnwrapSOL": True,
-            "quoteResponse": route,
-            "computeUnitPriceMicroLamports": 1
-        }
-        swap_txn = requests.post(swap_url, json=swap_data).json()
-        swap_tx = base58.b58decode(swap_txn["swapTransaction"])
+        # Transfer SOL to bonding curve
+        lamports = int(BUY_AMOUNT_SOL * 1_000_000_000)
+        txn.add(transfer(TransferParams(
+            from_pubkey=wallet,
+            to_pubkey=bonding_curve,
+            lamports=lamports
+        )))
 
-        # 3. Sign and send
-        from solana.transaction import Transaction
-        txn = Transaction.deserialize(swap_tx)
-        txn.sign(keypair)
-        result = client.send_transaction(txn, keypair, opts=TxOpts(skip_preflight=True, preflight_commitment="confirmed"))
-
-        print(f"✅ Swap success! TxID: {result['result']}")
-        return result['result']
+        # Send transaction
+        resp = client.send_transaction(txn, keypair)
+        sig = resp["result"]
+        print(f"✅ Buy sent! TxID: {sig}")
+        return True
 
     except Exception as e:
         print(f"❌ Buy failed: {e}")
