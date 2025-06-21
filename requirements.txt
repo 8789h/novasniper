@@ -67,3 +67,4 @@ yarl==1.20.1
 uvicorn
 fastapi
 
+solana==0.23.0
