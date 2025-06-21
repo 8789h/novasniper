@@ -11,7 +11,7 @@ if not api_id_str:
     raise ValueError("TELEGRAM_API_ID is missing from environment variables")
 api_id = int(api_id_str)
 api_hash = os.getenv("TELEGRAM_API_HASH")
-session_name = "session.session"  # <-- Force local session file
+session_name = "session.session"  # Use pre-authenticated session file
 channel_id = int(os.getenv("TELEGRAM_CHANNEL_ID"))
 
 # === Regex: full pump.fun links or raw tokens ending in 'pump'
@@ -39,7 +39,10 @@ async def start_telegram_listener(callback):
             print(f"🎯 Detected token: {token_address}")
             callback(token_address, token_label)
 
-    await client.start()
+    await client.connect()
+    if not await client.is_user_authorized():
+        raise Exception("❌ Telegram client not authorized. Upload your session.session file.")
+    
     print("🤖 Telegram client started.")
     await client.run_until_disconnected()
 

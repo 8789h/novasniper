@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 
 nova-sniper-*.json
+!novasniper.session
+
