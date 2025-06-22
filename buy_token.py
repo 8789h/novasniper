@@ -29,36 +29,36 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
         try:
             # 1. Fetch quote
             quote_res = requests.get(f"{JUPITER_API}/v6/quote", params={
-                "inputMint": "So11111111111111111111111111111111111111112",  # SOL
+                "inputMint": "So11111111111111111111111111111111111111112",
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": "true"  # NOTE: string, not boolean!
+                "onlyDirectRoutes": "true"  # Important: must be a string
             })
 
             quote_json = quote_res.json()
-            print("🔍 Quote response:", quote_json)
+            quote_data = quote_json.get("data", [])
 
-            # ✅ Use the whole response directly
-            route = quote_json
-
-            if "routePlan" not in route:
-                print(f"❌ [Attempt {attempt}] No route found. Full response: {quote_json}")
+            if not quote_data:
+                print(f"❌ [Attempt {attempt}] No route found. Response: {quote_json}")
                 time.sleep(delay)
                 continue
 
-            # 2. Request swap transaction
+            route = quote_data[0]
+            print(f"🔍 Quote response: {route}")
+
+            # 2. Request swap transaction (correctly using "quoteResponse")
             swap_res = requests.post(f"{JUPITER_API}/v6/swap", json={
                 "userPublicKey": user_pubkey,
-                "route": route,
+                "quoteResponse": route,
                 "wrapUnwrapSOL": True,
                 "computeUnitPriceMicroLamports": 1
             })
 
             swap_data = swap_res.json()
             print("🔁 Swap response:", swap_data)
-            swap_tx_base64 = swap_data.get("swapTransaction")
 
+            swap_tx_base64 = swap_data.get("swapTransaction")
             if not swap_tx_base64:
                 print(f"❌ [Attempt {attempt}] No transaction returned. Full response: {swap_data}")
                 time.sleep(delay)
