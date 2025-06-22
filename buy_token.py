@@ -49,7 +49,7 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 recent_blockhash=latest_blockhash,
                 address_lookup_table_accounts=[]  # ✅ Required param
             )
-            tx = VersionedTransaction(message=message, signers=[keypair])
+            tx = VersionedTransaction(message, [keypair])  # ✅ Positional arguments only
 
             # === Send tx
             sig = client.send_raw_transaction(tx.serialize(), opts=TxOpts(skip_preflight=True))["result"]
