@@ -2,7 +2,7 @@ import os
 import time
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
-from solders.instruction import Instruction
+from solders.instruction import Instruction, AccountMeta
 from solders.transaction import Transaction
 from solders.message import Message
 from solana.rpc.api import Client
@@ -27,10 +27,10 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
     for attempt in range(1, retries + 1):
         try:
-            # === Create transfer instruction (raw SOL)
+            # === Create transfer instruction
             keys = [
-                {"pubkey": sender, "is_signer": True, "is_writable": True},
-                {"pubkey": receiver, "is_signer": False, "is_writable": True},
+                AccountMeta(pubkey=sender, is_signer=True, is_writable=True),
+                AccountMeta(pubkey=receiver, is_signer=False, is_writable=True),
             ]
             data = b'\x02' + lamports.to_bytes(8, byteorder="little")
             instruction = Instruction(
