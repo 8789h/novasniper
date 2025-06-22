@@ -40,9 +40,9 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
             )
 
             # === Build and send tx
-            latest_blockhash = client.get_latest_blockhash()["result"]["value"]["blockhash"]
-            message = Message([instruction], payer=sender)
-            tx = Transaction([keypair], message, recent_blockhash=latest_blockhash)
+            latest_blockhash = client.get_latest_blockhash().value.blockhash
+            message = Message(instructions=[instruction], payer=sender)
+            tx = Transaction(signers=[keypair], message=message, recent_blockhash=latest_blockhash)
 
             sig = client.send_raw_transaction(tx.serialize(), opts=TxOpts(skip_preflight=True))["result"]
             print(f"✅ Buy successful: https://solscan.io/tx/{sig}")
