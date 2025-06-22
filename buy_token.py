@@ -33,7 +33,7 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": True  # ✅ Corrected to boolean
+                "onlyDirectRoutes": True  # ✅ Correct boolean (not a string)
             })
 
             quote_json = quote_res.json()
