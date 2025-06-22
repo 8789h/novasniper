@@ -39,14 +39,15 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 data=data
             )
 
-            # === Get blockhash
+            # === Get latest blockhash
             latest_blockhash = client.get_latest_blockhash().value.blockhash
 
-            # === Build and sign Versioned Tx
+            # === Build message and versioned tx
             message = MessageV0.try_compile(
                 payer=sender,
                 instructions=[instruction],
-                recent_blockhash=latest_blockhash
+                recent_blockhash=latest_blockhash,
+                address_lookup_table_accounts=[]  # ✅ Required param
             )
             tx = VersionedTransaction(message=message, signers=[keypair])
 
