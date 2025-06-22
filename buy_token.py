@@ -19,7 +19,7 @@ BUY_AMOUNT_SOL = float(os.getenv("BUY_AMOUNT_SOL", 0.001))
 keypair = Keypair.from_base58_string(PRIVATE_KEY)
 client = Client(RPC_URL)
 
-# === Buy token using Jupiter with retries
+# === Buy token using Jupiter with retries ===
 def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
     print(f"🛒 Attempting to buy token: {token_address}")
     user_pubkey = str(keypair.pubkey())
@@ -33,24 +33,30 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": "true"  # Must be string
+                "onlyDirectRoutes": "true"  # 👈 MUST be string
             })
 
             quote_json = quote_res.json()
-            quote_data = quote_json.get("data")
+            print("🔍 Quote response:", quote_json)
 
-            if not quote_data or len(quote_data) == 0:
-                print(f"❌ [Attempt {attempt}] No route found. Full quote response: {quote_json}")
-                time.sleep(delay)
-                continue
-
-            route = quote_data[0]
-            print(f"🔍 Quote route: {route}")
+            # Handle both wrapped and unwrapped quote formats
+            if "data" in quote_json and isinstance(quote_json["data"], list):
+                if len(quote_json["data"]) == 0:
+                    print(f"❌ [Attempt {attempt}] No route in wrapped 'data'. Full response: {quote_json}")
+                    time.sleep(delay)
+                    continue
+                route = quote_json["data"][0]
+            else:
+                route = quote_json
+                if "routePlan" not in route:
+                    print(f"❌ [Attempt {attempt}] No valid route in flat response. Full response: {quote_json}")
+                    time.sleep(delay)
+                    continue
 
             # 2. Request swap transaction
             swap_res = requests.post(f"{JUPITER_API}/v6/swap", json={
                 "userPublicKey": user_pubkey,
-                "quoteResponse": route,
+                "route": route,
                 "wrapUnwrapSOL": True,
                 "computeUnitPriceMicroLamports": 1
             })
@@ -60,7 +66,7 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
             swap_tx_base64 = swap_data.get("swapTransaction")
             if not swap_tx_base64:
-                print(f"❌ [Attempt {attempt}] No transaction returned. Swap response: {swap_data}")
+                print(f"❌ [Attempt {attempt}] No transaction returned. Full response: {swap_data}")
                 time.sleep(delay)
                 continue
 
