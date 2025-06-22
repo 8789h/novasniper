@@ -53,7 +53,8 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
             # === Send tx
             serialized_tx = bytes(tx)
-            sig = client.send_raw_transaction(serialized_tx, opts=TxOpts(skip_preflight=True))["result"]
+            response = client.send_raw_transaction(serialized_tx, opts=TxOpts(skip_preflight=True))
+            sig = response.value
             print(f"✅ Buy successful: https://solscan.io/tx/{sig}")
             return True
 
