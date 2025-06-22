@@ -1,8 +1,9 @@
 import os
 import time
-from solana.transaction import Transaction, TransactionInstruction
+from solana.transaction import Transaction
 from solana.publickey import PublicKey
 from solana.rpc.api import Client
+from solana.system_program import transfer, TransferParams
 from solders.keypair import Keypair
 from dotenv import load_dotenv
 
@@ -25,20 +26,20 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
     for attempt in range(1, retries + 1):
         try:
-            # Build raw transfer instruction
-            instruction = TransactionInstruction(
-                keys=[
-                    {"pubkey": sender, "is_signer": True, "is_writable": True},
-                    {"pubkey": receiver, "is_signer": False, "is_writable": True},
-                ],
-                program_id=PublicKey("11111111111111111111111111111111"),  # System program
-                data=lamports.to_bytes(8, "little")  # 64-bit unsigned int LE
+            # Build transfer instruction
+            tx = Transaction()
+            tx.add(
+                transfer(
+                    TransferParams(
+                        from_pubkey=sender,
+                        to_pubkey=receiver,
+                        lamports=lamports
+                    )
+                )
             )
 
-            # Build transaction and send
-            tx = Transaction().add(instruction)
+            # Send transaction
             response = client.send_transaction(tx, keypair)
-
             sig = response.get("result")
             if not sig:
                 print(f"❌ [Attempt {attempt}] Transfer rejected: {response}")
