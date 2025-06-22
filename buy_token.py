@@ -1,10 +1,10 @@
 import os
 import time
 from solana.transaction import Transaction
-from solana.publickey import PublicKey
-from solana.rpc.api import Client
 from solana.system_program import transfer, TransferParams
+from solana.rpc.api import Client
 from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 from dotenv import load_dotenv
 
 # === Load environment variables ===
@@ -20,25 +20,23 @@ client = Client(RPC_URL)
 # === Function to buy token via raw SOL transfer ===
 def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
     print(f"🛒 Attempting SOL transfer to: {token_address}")
-    receiver = PublicKey(token_address)
+    receiver = Pubkey.from_string(token_address)
     sender = keypair.pubkey()
     lamports = int(BUY_AMOUNT_SOL * 1_000_000_000)
 
     for attempt in range(1, retries + 1):
         try:
-            # Build transfer instruction
             tx = Transaction()
             tx.add(
                 transfer(
                     TransferParams(
                         from_pubkey=sender,
                         to_pubkey=receiver,
-                        lamports=lamports
+                        lamports=lamports,
                     )
                 )
             )
 
-            # Send transaction
             response = client.send_transaction(tx, keypair)
             sig = response.get("result")
             if not sig:
