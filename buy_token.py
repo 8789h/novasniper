@@ -47,12 +47,13 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 payer=sender,
                 instructions=[instruction],
                 recent_blockhash=latest_blockhash,
-                address_lookup_table_accounts=[]  # ✅ Required param
+                address_lookup_table_accounts=[]
             )
-            tx = VersionedTransaction(message, [keypair])  # ✅ Positional arguments only
+            tx = VersionedTransaction(message, [keypair])
 
             # === Send tx
-            sig = client.send_raw_transaction(tx.serialize(), opts=TxOpts(skip_preflight=True))["result"]
+            serialized_tx = bytes(tx)
+            sig = client.send_raw_transaction(serialized_tx, opts=TxOpts(skip_preflight=True))["result"]
             print(f"✅ Buy successful: https://solscan.io/tx/{sig}")
             return True
 
