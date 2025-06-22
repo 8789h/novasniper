@@ -19,7 +19,7 @@ BUY_AMOUNT_SOL = float(os.getenv("BUY_AMOUNT_SOL", 0.001))
 keypair = Keypair.from_base58_string(PRIVATE_KEY)
 client = Client(RPC_URL)
 
-# === Buy token using Jupiter with retries ===
+# === Buy token using Jupiter with retries
 def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
     print(f"🛒 Attempting to buy token: {token_address}")
     user_pubkey = str(keypair.pubkey())
@@ -29,11 +29,11 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
         try:
             # 1. Fetch quote
             quote_res = requests.get(f"{JUPITER_API}/v6/quote", params={
-                "inputMint": "So11111111111111111111111111111111111111112",
+                "inputMint": "So11111111111111111111111111111111111111112",  # Native SOL
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": True
+                "onlyDirectRoutes": True  # ✅ Corrected to boolean
             })
 
             quote_json = quote_res.json()
@@ -51,15 +51,12 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 "userPublicKey": user_pubkey,
                 "route": route,
                 "wrapUnwrapSOL": True,
-                "computeUnitPriceMicroLamports": 1,
-                "asLegacyTransaction": False
+                "computeUnitPriceMicroLamports": 1
             })
 
             swap_tx_base64 = swap_res.json().get("swapTransaction")
-            print(f"🔁 Raw swap response: {swap_res.json()}")  # Debug
-
             if not swap_tx_base64:
-                print(f"❌ [Attempt {attempt}] No transaction returned.")
+                print(f"❌ [Attempt {attempt}] No transaction returned. Response: {swap_res.json()}")
                 time.sleep(delay)
                 continue
 
