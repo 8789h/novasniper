@@ -29,23 +29,23 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
         try:
             # 1. Fetch quote
             quote_res = requests.get(f"{JUPITER_API}/v6/quote", params={
-                "inputMint": "So11111111111111111111111111111111111111112",
+                "inputMint": "So11111111111111111111111111111111111111112",  # SOL
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": "true"  # ✅ Jupiter expects a string
+                "onlyDirectRoutes": "true"  # NOTE: string, not boolean!
             })
 
             quote_json = quote_res.json()
-            print(f"🔍 Quote response: {quote_json}")
-            quote_data = quote_json.get("data", [])
+            print("🔍 Quote response:", quote_json)
 
-            if not quote_data:
-                print(f"❌ [Attempt {attempt}] No route found.")
+            # ✅ Use the whole response directly
+            route = quote_json
+
+            if "routePlan" not in route:
+                print(f"❌ [Attempt {attempt}] No route found. Full response: {quote_json}")
                 time.sleep(delay)
                 continue
-
-            route = quote_data[0]
 
             # 2. Request swap transaction
             swap_res = requests.post(f"{JUPITER_API}/v6/swap", json={
@@ -57,10 +57,10 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
             swap_data = swap_res.json()
             print("🔁 Swap response:", swap_data)
-
             swap_tx_base64 = swap_data.get("swapTransaction")
+
             if not swap_tx_base64:
-                print(f"❌ [Attempt {attempt}] No transaction returned.")
+                print(f"❌ [Attempt {attempt}] No transaction returned. Full response: {swap_data}")
                 time.sleep(delay)
                 continue
 
