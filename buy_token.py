@@ -33,21 +33,21 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 "outputMint": token_address,
                 "amount": amount_lamports,
                 "slippageBps": 500,
-                "onlyDirectRoutes": "true"  # Important: must be a string
+                "onlyDirectRoutes": "true"  # Must be string
             })
 
             quote_json = quote_res.json()
-            quote_data = quote_json.get("data", [])
+            quote_data = quote_json.get("data")
 
-            if not quote_data:
-                print(f"❌ [Attempt {attempt}] No route found. Response: {quote_json}")
+            if not quote_data or len(quote_data) == 0:
+                print(f"❌ [Attempt {attempt}] No route found. Full quote response: {quote_json}")
                 time.sleep(delay)
                 continue
 
             route = quote_data[0]
-            print(f"🔍 Quote response: {route}")
+            print(f"🔍 Quote route: {route}")
 
-            # 2. Request swap transaction (correctly using "quoteResponse")
+            # 2. Request swap transaction
             swap_res = requests.post(f"{JUPITER_API}/v6/swap", json={
                 "userPublicKey": user_pubkey,
                 "quoteResponse": route,
@@ -60,7 +60,7 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
 
             swap_tx_base64 = swap_data.get("swapTransaction")
             if not swap_tx_base64:
-                print(f"❌ [Attempt {attempt}] No transaction returned. Full response: {swap_data}")
+                print(f"❌ [Attempt {attempt}] No transaction returned. Swap response: {swap_data}")
                 time.sleep(delay)
                 continue
 
