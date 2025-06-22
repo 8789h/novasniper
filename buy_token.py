@@ -3,8 +3,8 @@ import time
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solders.instruction import Instruction, AccountMeta
-from solders.transaction import Transaction
-from solders.message import Message
+from solders.transaction import VersionedTransaction
+from solders.message import MessageV0
 from solana.rpc.api import Client
 from solana.rpc.types import TxOpts
 from dotenv import load_dotenv
@@ -39,11 +39,18 @@ def buy_token(token_address: str, retries: int = 3, delay: int = 5) -> bool:
                 data=data
             )
 
-            # === Build and send tx
+            # === Get blockhash
             latest_blockhash = client.get_latest_blockhash().value.blockhash
-            message = Message(instructions=[instruction], payer=sender)
-            tx = Transaction(signers=[keypair], message=message, recent_blockhash=latest_blockhash)
 
+            # === Build and sign Versioned Tx
+            message = MessageV0.try_compile(
+                payer=sender,
+                instructions=[instruction],
+                recent_blockhash=latest_blockhash
+            )
+            tx = VersionedTransaction(message=message, signers=[keypair])
+
+            # === Send tx
             sig = client.send_raw_transaction(tx.serialize(), opts=TxOpts(skip_preflight=True))["result"]
             print(f"✅ Buy successful: https://solscan.io/tx/{sig}")
             return True
