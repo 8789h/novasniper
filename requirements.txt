@@ -8,3 +8,4 @@ uvicorn==0.34.3
 fastapi==0.115.13
 typing-extensions>=4.6.0
 
+requests==2.32.4
